@@ -47,7 +47,6 @@ services:
       - kafka
     command: [ "bash", "-c", "sleep 20 && python3 kafka_python.py" ]
 
-
   restapi:
     build: ./app
     ports:

@@ -7,7 +7,7 @@ import falcon
 
 #load_dotenv(override=True)
 import logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s - in %(filename)s - Func: %(funcName)s - Line: %(lineno)d - Thread: %(threadName)s')
 
 from resources.resourceMessages import Messagesbasic, Messages, Messagesv2, FinalMessage
 from middleware.auth_middleware import ApiKeyMiddleware

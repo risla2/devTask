@@ -8,17 +8,7 @@ from argparse import ArgumentParser, FileType
 from datetime import datetime,timezone
 import logging
 import json
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-'''
-try:
-    from kafka_rep import create_producer_wrapper, create_consumer_wrapper
-    logging.info("Imported create_producer_wrapper, create_consumer_wrapper from kafka_rep")
-except Exception as e:
-    logging.error(f"Exception----------- {e}")
-    logging.info("Importing from app.kafka_res.kafka_rep")
-    from app.kafka_res.kafka_rep import create_producer_wrapper, create_consumer_wrapper
-'''
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s - in %(filename)s - Func: %(funcName)s - Line: %(lineno)d - Thread: %(threadName)s')
 
 #Import producuer, consumer, config and apikey depending on the app path
 #Todo Fix in the dockerfile?
@@ -35,12 +25,6 @@ def serializer(message):
 def deserializer(message):
     return json.loads(message.decode('utf-8'))
 
-def delivery_callback(err, msg):
-    if err:
-        print('ERROR: Message failed delivery: {}'.format(err))
-    else:
-        print("Produced event to topic {topic}: value = {value:12}".format(
-            topic=msg.topic(),  value=msg.value().decode('utf-8')))
 
 def main():
 
@@ -54,7 +38,9 @@ def main():
     final_kafka_topic = kafka_config['final_kafka_topic']
     try:
         #kafka_consumer = create_kafka_consumer()
-        kafka_consumer = create_kafka_consumer(bootstrap_servers=kafka_config['bootstrap_servers'], auto_offset_reset=kafka_config['auto_offset_reset'], group_id=kafka_config['group_id'])
+        kafka_consumer = create_kafka_consumer(bootstrap_servers=kafka_config['bootstrap_servers'],
+                                               auto_offset_reset=kafka_config['auto_offset_reset'],
+                                               group_id=kafka_config['group_id1'])
         logging.info("Consumer created FOR kafka_python.py: " + str(kafka_consumer) + "broker")
         kafka_consumer.subscribe([first_kafka_topic])
         logging.info("Consumer subscribed FOR kafka_python.py " + str(first_kafka_topic))
@@ -113,14 +99,6 @@ def main():
     # Poll for new messages from Kafka
     #kafka_consumer.subscribe([topic_name])
     #kafka_consumer.subscribtion()
-
-    '''
-    finally:
-        logger.info('Closing consumer and producer')
-        consumer.close()
-        producer.close()
-    '''
-
 
 if __name__ == '__main__':
     main()

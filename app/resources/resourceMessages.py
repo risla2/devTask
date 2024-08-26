@@ -3,11 +3,9 @@ import sys
 import json
 import falcon
 from falcon import media
-import falcon.media
 from falcon.media.validators import jsonschema as fjsonschema
 import logging
-from kafka3 import KafkaAdminClient
-from kafka3.errors import KafkaError
+from kafka import KafkaAdminClient
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 from datetime import datetime, timezone
 
@@ -17,19 +15,8 @@ from jsonschema import validate, ValidationError, SchemaError
 from kafka.errors import KafkaError
 
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s - in %(filename)s - Func: %(funcName)s - Line: %(lineno)d - Thread: %(threadName)s')
 
-def delivery_callback(err, msg):
-    if err:
-        print('ERROR: Message failed delivery: {}'.format(err))
-    else:
-
-        print("Produced event to topic {topic}: value = {value:12}".format(
-            topic=msg.topic(),
-            value=msg.value().decode('utf-8')))
-
-
-handlers = media.Handlers()
 
 ALLOWED_DATA_TYPE={'application/json'}
 
@@ -67,7 +54,6 @@ class ProducerHandling:
 
     def on_errors(self, exc, topic):
         logging.error(f"Sending messages failed due to: {exc}")
-
 
     def send_message(self, topic, message_value):
         try:
@@ -128,7 +114,6 @@ def data_validation(req, resp, resource, params):
     except Exception as e:
         logging.info(f"An unexpected error occurred: {str(e)}")
         raise falcon.HTTPInternalServerError(description=f"An unexpected error occurred: {str(e)}")
-
 class Messages(ProducerHandling):
     def __init__(self, kafka_producer, kafka_config):
         super().__init__(kafka_producer)
@@ -165,9 +150,6 @@ class Messagesv2(ProducerHandling): #Naj
     
     @fjsonschema.validate(fjson_schema)
     def on_post(self, req, resp):
-        # print(req["content_type"])
-
-
         if req.content_length in (None, 0):
             raise falcon.HTTPBadRequest('No message', 'Nothing to parse')
 
@@ -217,7 +199,6 @@ class Messagesv2(ProducerHandling): #Naj
             first_topic = self.kafka_config["first_kafka_topic"]
             message_value = json.dumps(msg).encode('utf-8')
             self.send_message(first_topic, message_value=message_value)
-
 class FinalMessage:
     def __init__(self, consumer_wrapper, kafka_config):
         self.consumer_wrapper = consumer_wrapper
@@ -226,6 +207,22 @@ class FinalMessage:
         self.max_messages=kafka_config['max_messages']
         self.consumer_timeout_ms=kafka_config['consumer_timeout_ms']
 
+    def create_consumer(self):
+        try:
+            consumer = self.consumer_wrapper(bootstrap_servers=self.kafka_c_config['bootstrap_servers'],
+                                             auto_offset_reset=self.kafka_c_config['auto_offset_reset'],
+                                             group_id=self.kafka_c_config['group_id2'],
+                                             consumer_timeout_ms=self.kafka_c_config['consumer_timeout_ms'],
+                                             value_deserializer=lambda m: json.loads(m.decode("utf-8")))
+            logging.info("Kafka consumer created successfully.")
+            return consumer
+        except KafkaError as e:
+            logging.error(f"KafkaError when creating consumer: %s", e)
+            raise falcon.HTTPInternalServerError(description="Consumer creation failed.")
+        except Exception as e:
+            logging.error(f"Error {e} when creating consumer")
+            raise falcon.HTTPInternalServerError(description="Consumer creation failed.")
+    '''
     def list_topics(self):
         try:
             admin_client = KafkaAdminClient(bootstrap_servers=self.kafka_c_config['bootstrap_servers'])
@@ -237,7 +234,7 @@ class FinalMessage:
             return None
         except Exception as e:
             logging.error(f"Error {e} when listing topics")
-            return None
+            return None'''
 
     def deserialize(self, message):
         return json.loads(message.decode('utf-8'))
@@ -246,60 +243,56 @@ class FinalMessage:
         start_time=time.time()
 
         try:
-            self.consumer = self.consumer_wrapper(bootstrap_servers=self.kafka_c_config['bootstrap_servers'],
-                                 auto_offset_reset=self.kafka_c_config['auto_offset_reset'], group_id=self.kafka_c_config['group_id'], consumer_timeout_ms=self.kafka_c_config['consumer_timeout_ms'])
-
-            logging.info("Consumer returned from kafka_python.py to resource: ")
-        except KafkaError as e:
-            logging.error(f"KafkaError when creating consumer: %s", e)
-            resp.status=falcon.HTTP_500
-            resp.media={"error": "Consumer creation failed" + str(e)}
+            self.consumer = self.create_consumer()  # Use the create_consumer method
+        except falcon.HTTPInternalServerError as e: #Todo mislim da mi ne treba
+            resp.status = falcon.HTTP_500
+            resp.media = {"error": str(e)}
             return
-        except Exception as e:
-            logging.error(f"Error {e} when creating consumer")
-            resp.media={"error": f"Consumer creation failed: {e}"}
-            return
-
 
         try:
             self.consumer.subscribe([self.final_kafka_topic])
-            resp.content_type = falcon.MEDIA_JSON
             # Check if subscription was successful
             subscribed_topics = list(self.consumer.subscription())
 
-            if 'final_numbers' not in subscribed_topics:
-                logging.error(f"Consumer not subscribed to final_numbers. Subscribed to: {subscribed_topics}")
-                resp.status = falcon.HTTP_500
-                resp.media = {"error": "Consumer not subscribed to the correct topic."}
-                return
-
+            ''' To check if subscribed to correct topic, but mybe time consuminh
             if self.final_kafka_topic not in subscribed_topics:
                 logging.error(f"Consumer not subscribed to final_numbers. Subscribed to: {subscribed_topics}")
                 resp.status = falcon.HTTP_500
                 resp.media = {"error": f"Consumer not subscribed to the self.final_kafka_topic: {self.final_kafka_topic}."}
-                return
+                return'''
 
-        except Exception as exc:
-            self.consumer.close()
-            logging.error(f"Subscribing failed due to: {exc}, closing consumer")
-            resp.status = falcon.HTTP_500
-            resp.media = {"error": exc}
+            final_messages=[]
 
-        final_messages=[]
-        try:
             for msg in self.consumer:
-                consumed_value = self.deserialize(msg.value)
-                final_messages.append(consumed_value)
-                if len(final_messages) >= self.max_messages:
-                    logging.info("Max amount of messages collected")
+                #consumed_value = self.deserialize(msg.value)
+                final_messages.append(msg.value)
+                if len(final_messages) >= self.max_messages: #TODO test with max_poll_records
+                    logging.info(f"Returning max number of messages")
                     break
 
-                if time.time() - start_time > 5:
-                    logging.info(f"Current time passed: {time.time() - start_time}")
-                    logging.info("Max time reached")
+                if time.time() - start_time > 2: #TODO REMOVE THIS AND USE ONLY TIME OUT
+                    logging.info(f"Max time reached: {time.time() - start_time}")
                     break
-                else:
-                    logging.info(f"Current time passed {time.time() - start_time}")
+
+            logging.info(f"Time passed: {time.time() - start_time}")
+
+            if len(final_messages) == 0:
+                logging.info("No messages found")
+                #resp.status = falcon.HTTP_204 No content, but then ther is no media
+                resp.media = {"message": "No messages"}
+
+            else:
+                logging.info("Number of messages: %d", len(final_messages))
+                logging.info(f"Final messages: {final_messages}")
+                resp.media = final_messages
+                resp.content_type = falcon.MEDIA_JSON
+                # How to get indentation
+                resp.status = falcon.HTTP_200
+
+        except KafkaError as e:
+            logging.error(f"KafkaError during message consumption: {e}")
+            resp.status = falcon.HTTP_500
+            resp.media = {"error": "Internal Server Error: Kafka consumption failed"}
 
         except Exception as exc:
             logging.error(f"Subscribing failed due to: {exc}")
@@ -308,18 +301,6 @@ class FinalMessage:
         finally:
             self.consumer.close()
             logging.info(f"Closing consumer")
-
-        if len(final_messages)==0:
-            logging.info("No messages")
-            resp.media = {"message": "No messages"}
-
-        else:
-            logging.info("Number of messages: %d", len(final_messages))
-            logging.info(f"Final messages: {final_messages}")
-            resp.media = final_messages
-
-        resp.status = falcon.HTTP_201
-
 
 class Messagesbasic():
     def __init__(self, kafka_producer, kafka_config):

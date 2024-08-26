@@ -42,7 +42,6 @@ fjson_schema = {
     },
     "required": ["numbers"]
 }
-
 class ProducerHandling:
     def __init__(self, kafka_producer):
         self.kafka_producer=kafka_producer
@@ -54,7 +53,6 @@ class ProducerHandling:
 
     def on_errors(self, exc, topic):
         logging.error(f"Sending messages failed due to: {exc}")
-
     def send_message(self, topic, message_value):
         try:
             future=self.kafka_producer.send(topic, value=message_value)
@@ -74,7 +72,7 @@ def data_validation(req, resp, resource, params):
         raise falcon.HTTPBadRequest(title='Bad request', description=msg)
     
     try:
-        data=req.get_media() #Parsing JSON body
+        data=req.get_media() #Parsing
         if data is None:
             msg = 'data is empty.'
             logging.info(f"Data validation, error: {msg}")
@@ -89,19 +87,23 @@ def data_validation(req, resp, resource, params):
     except falcon.HTTPInvalidHeader as e:
         # Handle specific exception for invalid header
         logging.info(f"HTTPInvalidHeader: {str(e)}")
-
         raise falcon.HTTPBadRequest(title='Bad request', description=f"Invalid JSON: {str(e)}")
+
+    except falcon.MediaMalformedError as e:
+        # Handle specific exception for invalid header
+        logging.info(f"Body error: {str(e)}")
+        raise falcon.HTTPBadRequest(title='Body error', description=f"{str(e)} - Check the body")
 
     except Exception as e:
         logging.info(f"Exception: {e}")
         raise falcon.HTTPInternalServerError(description=f"An unexpected error occurred: {str(e)}")
 
-    try: #Nije mi radilo u početku
+    try:
         # Validate the parsed JSON data against a schema
         logging.info(f"Validating instance: {data} With schema: {json_schema}")
-        validate(instance=data, schema=json_schema) #proradilo
+        validate(instance=data, schema=json_schema)
         logging.info("Validation succesfull")
-        req.context['validated_data'] = data  # To be able to usit in on_post or and any other method
+        req.context['validated_data'] = data  # To be able to use it in on_post or and any other method
 
     except ValidationError as e:
         logging.info(f"ValidationError: {str(e)}")
@@ -114,7 +116,7 @@ def data_validation(req, resp, resource, params):
     except Exception as e:
         logging.info(f"An unexpected error occurred: {str(e)}")
         raise falcon.HTTPInternalServerError(description=f"An unexpected error occurred: {str(e)}")
-class Messages(ProducerHandling):
+class Messagesv2(ProducerHandling):
     def __init__(self, kafka_producer, kafka_config):
         super().__init__(kafka_producer)
         self.kafka_config = kafka_config
@@ -129,7 +131,6 @@ class Messages(ProducerHandling):
         }
         resp.media = response_data
         resp.status = falcon.HTTP_201
-        # resp.data = json.dumps(response_data)
         # resp.context = numbers <<- store additional data that might be useful for logging, caching etc
         # resp.text=json.dumps(response_data) #return text with  Content-Type header set to text/plain
 
@@ -142,12 +143,11 @@ class Messages(ProducerHandling):
         message = json.dumps(msg).encode('utf-8')
         self.send_message(first_topic, message)
 
-class Messagesv2(ProducerHandling): #Naj
-
+class Messages(ProducerHandling): #Naj
     def __init__(self, kafka_producer, kafka_config):
         super().__init__(kafka_producer)
         self.kafka_config = kafka_config
-    
+
     @fjsonschema.validate(fjson_schema)
     def on_post(self, req, resp):
         if req.content_length in (None, 0):
@@ -206,7 +206,6 @@ class FinalMessage:
         self.final_kafka_topic= kafka_config['final_kafka_topic']
         self.max_messages=kafka_config['max_messages']
         self.consumer_timeout_ms=kafka_config['consumer_timeout_ms']
-
     def create_consumer(self):
         try:
             consumer = self.consumer_wrapper(bootstrap_servers=self.kafka_c_config['bootstrap_servers'],
@@ -235,7 +234,6 @@ class FinalMessage:
         except Exception as e:
             logging.error(f"Error {e} when listing topics")
             return None'''
-
     def deserialize(self, message):
         return json.loads(message.decode('utf-8'))
 
@@ -302,6 +300,7 @@ class FinalMessage:
             self.consumer.close()
             logging.info(f"Closing consumer")
 
+# not in use:
 class Messagesbasic():
     def __init__(self, kafka_producer, kafka_config):
         self.kafka_producer = kafka_producer
@@ -309,7 +308,6 @@ class Messagesbasic():
 
     def on_get(self, req, resp):
         raise falcon.HTTPMethodNotAllowed(allowed_methods=['POST'])
-
     def on_post(self, req, resp):
         if req.content_length in (None, 0):
             logging.info(f"Body is empty:")

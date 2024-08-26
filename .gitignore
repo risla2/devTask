@@ -1,21 +1,5 @@
-# Exclude all .idea folder contents
+# Exclude .idea folder
 .idea/
-
-# Except the following files:
-!.idea/modules.xml
-!.idea/misc.xml
-!.idea/vcs.xml
-!.idea/encodings.xml
-!.idea/libraries/
-!.idea/runConfigurations/
-
-# Exclude user-specific files
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/dictionaries/
-.idea/usage.statistics.xml
-.idea/shelf/
-
 
 # Environments
 .wenv

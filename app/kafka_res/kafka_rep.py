@@ -27,7 +27,6 @@ if not os.path.isfile(ini_path):
 else:
     logging.info(f"The file '" + ini_path + "' found in: " + os.getcwd())
 
-
 # Read the configuration file
 try:
     config.read(ini_path)
@@ -71,10 +70,8 @@ kafka_c_config = {
     'group_id2': kafka_config['group_id2'],
     'auto_offset_reset': kafka_config['auto_offset_reset'],
 }
-
 def create_kafka_producer():
     return KafkaProducer(bootstrap_servers=kafka_config['bootstrap_servers'])
-
 def create_kafka_consumer(**kwargs):
     if not kwargs:
         logging.info("Returning consumer from kafka_rep.py " + kafka_config['bootstrap_servers'])
@@ -93,5 +90,3 @@ def delivery_callback2(err, msg):
 
         logging.info("Produced event to topic {topic}: value = {value:12}".format(
             topic=msg.topic(),  value=msg.value().decode('utf-8')))
-
-#confluent_producer.produce(PRODUCER_TOPIC, value=message_value,callback=delivery_callback)

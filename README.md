@@ -1,7 +1,5 @@
 # devTask
 Python dev task
-# devTask
-Python dev task
 [2024-08-25 21:03:59,812] INFO [GroupCoordinator 1]: Dynamic Member with unknown member id joins group dev_task in Stable state. Created a new member id kafka-python-3.0.0-94d25c56-e3c2-4f58-8291-3dc9f1e861a9 for this member and add to the group. (kafka.coordinator.group.GroupCoordinator)
 2024-08-25 23:03:59 [2024-08-25 21:03:59,812] INFO [GroupCoordinator 1]: Preparing to rebalance group dev_task in state PreparingRebalance with old generation 26 (__consumer_offsets-37) (reason: Adding new member kafka-python-3.0.0-94d25c56-e3c2-4f58-8291-3dc9f1e861a9 with group instance id None; client reason: not provided) (kafka.coordinator.group.GroupCoordinator)
 2024-08-25 23:04:01 [2024-08-25 21:04:01,541] INFO [GroupCoordinator 1]: Stabilized group dev_task generation 27 (__consumer_offsets-37) with 2 members (kafka.coordinator.group.GroupCoordinator)

@@ -18,14 +18,10 @@ try:
 except Exception as e:
     logging.info(f"Importing from kafka_rep failed: {e}")
     from app.kafka_res.kafka_rep import create_kafka_producer, create_kafka_consumer, kafka_config
-
 def serializer(message):
     return json.dumps(message).encode('utf-8')
-
 def deserializer(message):
     return json.loads(message.decode('utf-8'))
-
-
 def main():
 
     kafka_producer = create_kafka_producer()
@@ -47,7 +43,6 @@ def main():
     except Exception as e:
         logging.error("Consumer not created FOR kafka_python.py due to : " + str(e))
         return
-
 
     try:
         #while True:
